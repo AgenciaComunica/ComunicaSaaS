@@ -4,14 +4,17 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Allow running with public/ inside a subdomain and app root in /ComunicaSaaS.
+$appRoot = realpath(__DIR__.'/../../ComunicaSaaS') ?: realpath(__DIR__.'/..');
+
 // Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+if (file_exists($maintenance = $appRoot.'/storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
 // Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
+require $appRoot.'/vendor/autoload.php';
 
 // Bootstrap Laravel and handle the request...
-(require_once __DIR__.'/../bootstrap/app.php')
+(require_once $appRoot.'/bootstrap/app.php')
     ->handleRequest(Request::capture());
