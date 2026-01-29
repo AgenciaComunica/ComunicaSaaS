@@ -16,25 +16,27 @@ class IntelbrasXlsxParserService
         $rows = $sheet->toArray(null, true, true, true);
 
         if (count($rows) < 2) {
-            throw new \RuntimeException('Planilha Intelbras sem dados.');
+            throw new \RuntimeException('Planilha CRM Vendas sem dados.');
         }
 
         $headerRow = array_shift($rows);
         $normalized = [];
         foreach ($headerRow as $col => $header) {
-            $normalized[$col] = ColumnNormalizer::normalize((string) $header);
+            $clean = $this->cleanHeader((string) $header);
+            $normalized[$col] = ColumnNormalizer::normalize($clean);
         }
 
         $map = $this->mapColumns($normalized);
-        if (!$map['first_message']) {
-            throw new \RuntimeException('Coluna "1º Mensagem" não encontrada na planilha Intelbras.');
-        }
+        $missing = $this->missingColumns($map);
+        $hasFirstMessage = !empty($map['first_message']);
 
         $stats = [
             'rows' => 0,
             'pago' => 0,
             'organico' => 0,
+            'indefinido' => 0,
             'sem_temperatura_pago' => 0,
+            'missing' => $missing,
         ];
 
         foreach ($rows as $row) {
@@ -50,11 +52,13 @@ class IntelbrasXlsxParserService
             }
 
             $stats['rows']++;
-            $origin = $this->detectOrigin($firstMessage);
+            $origin = $hasFirstMessage ? $this->detectOrigin($firstMessage) : 'INDEFINIDO';
             if ($origin === 'TRAFEGO_PAGO') {
                 $stats['pago']++;
-            } else {
+            } elseif ($origin === 'ORGANICO') {
                 $stats['organico']++;
+            } else {
+                $stats['indefinido']++;
             }
 
             $temperature = $this->normalizeTemperature($temperatureRaw);
@@ -81,22 +85,46 @@ class IntelbrasXlsxParserService
             ]);
         }
 
-        Log::info('Intelbras XLSX parsed', ['batch_id' => $batch->id, 'stats' => $stats]);
+        Log::info('CRM Vendas XLSX parsed', ['batch_id' => $batch->id, 'stats' => $stats]);
 
         return $stats;
+    }
+
+
+    private function resolveColumn(array $normalizedHeaders, array $synonyms, array $keywords = [], int $minScore = 1): ?string
+    {
+        $found = ColumnNormalizer::findBySynonyms($normalizedHeaders, $synonyms);
+        if ($found) {
+            return $found;
+        }
+
+        if ($keywords) {
+            return ColumnNormalizer::findBestMatch($normalizedHeaders, $keywords, $minScore);
+        }
+
+        return null;
+    }
+
+    private function cleanHeader(string $header): string
+    {
+        return ltrim($header, "\xEF\xBB\xBF");
     }
 
     private function mapColumns(array $normalizedHeaders): array
     {
         return [
-            'first_message' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            'first_message' => $this->resolveColumn($normalizedHeaders, [
                 '1 mensagem',
                 '1a mensagem',
                 '1o mensagem',
                 'primeira mensagem',
+                'primeira msg',
+                'mensagem inicial',
                 'primeiro contato',
-            ]),
-            'temperature' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+                'primeiro atendimento',
+                'mensagem do lead',
+            ], ['mensagem', 'primeira', 'primeiro', 'contato'], 2),
+            'temperature' => $this->resolveColumn($normalizedHeaders, [
                 'temperatura',
                 'tag',
                 'etiqueta',
@@ -104,30 +132,36 @@ class IntelbrasXlsxParserService
                 'tags',
                 'classificacao',
                 'classificacao lead',
-            ]),
-            'valor_venda' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+                'categoria',
+            ], ['temperatura', 'tag', 'etiqueta', 'classificacao', 'categoria'], 1),
+            'valor_venda' => $this->resolveColumn($normalizedHeaders, [
                 'valor venda',
                 'valor da venda',
                 'valor de venda',
                 'venda valor',
                 'valor fechamento',
-            ]),
-            'name' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+                'valor de fechamento',
+                'valor negociado',
+                'valor total',
+            ], ['valor', 'venda', 'fechamento'], 2),
+            'name' => $this->resolveColumn($normalizedHeaders, [
                 'nome',
                 'cliente',
                 'contato',
                 'lead',
-            ]),
-            'phone' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['nome', 'cliente', 'contato', 'lead'], 1),
+            'phone' => $this->resolveColumn($normalizedHeaders, [
                 'telefone',
                 'celular',
                 'whatsapp',
                 'fone',
-            ]),
-            'email' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+                'phone',
+                'tel',
+            ], ['telefone', 'celular', 'whatsapp', 'fone', 'tel', 'phone'], 1),
+            'email' => $this->resolveColumn($normalizedHeaders, [
                 'email',
                 'e mail',
-            ]),
+            ], ['email', 'mail'], 1),
         ];
     }
 
@@ -163,6 +197,19 @@ class IntelbrasXlsxParserService
         }
 
         return 'SEM_TEMPERATURA';
+    }
+
+    private function missingColumns(array $map): array
+    {
+        $labels = ['first_message', 'temperature', 'valor_venda', 'name', 'phone', 'email'];
+        $missing = [];
+        foreach ($labels as $key) {
+            if (empty($map[$key])) {
+                $missing[] = $key;
+            }
+        }
+
+        return $missing;
     }
 
     private function parseNumber($value): float

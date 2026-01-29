@@ -12,7 +12,7 @@
                 <thead>
                     <tr>
                         <th>Período</th>
-                        <th>Upload</th>
+                                                <th>Upload</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
@@ -20,7 +20,7 @@
                     @foreach($batches as $batch)
                         <tr>
                             <td>{{ $batch->display_label }}</td>
-                            <td>{{ $batch->parsed_at ? $batch->parsed_at->format('d/m/Y H:i') : '—' }}</td>
+                                                        <td>{{ $batch->parsed_at ? $batch->parsed_at->format('d/m/Y H:i') : '—' }}</td>
                             <td class="text-end">
                                 <a href="{{ route('reports.show', $batch) }}" class="btn btn-sm btn-outline-primary">Abrir</a>
                                 <a href="{{ route('reports.pdf', $batch) }}" class="btn btn-sm btn-outline-secondary">PDF</a>

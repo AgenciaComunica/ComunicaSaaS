@@ -31,4 +31,25 @@ class ColumnNormalizer
 
         return null;
     }
+
+    public static function findBestMatch(array $normalizedHeaders, array $keywords, int $minScore = 1): ?string
+    {
+        $best = null;
+        $bestScore = 0;
+
+        foreach ($normalizedHeaders as $original => $normalized) {
+            $score = 0;
+            foreach ($keywords as $keyword) {
+                if ($keyword !== '' && str_contains($normalized, $keyword)) {
+                    $score++;
+                }
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $original;
+            }
+        }
+
+        return $bestScore >= $minScore ? $best : null;
+    }
 }

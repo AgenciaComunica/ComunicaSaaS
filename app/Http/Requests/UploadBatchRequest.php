@@ -20,18 +20,4 @@ class UploadBatchRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator) {
-            $period = $this->input('period');
-            if (!$period || !str_contains($period, '-')) {
-                return;
-            }
-            [$year, $month] = array_map('intval', explode('-', $period));
-            $exists = \App\Models\UploadBatch::where('year', $year)->where('month', $month)->exists();
-            if ($exists) {
-                $validator->errors()->add('period', 'Já existe um upload para este mês/ano.');
-            }
-        });
-    }
 }

@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="mb-4">
-        <h1 class="h4 mb-1">Editar usuário</h1>
+        <h1 class="h4 mb-1">Editar empresa</h1>
         <div class="text-muted">{{ $user->name }}</div>
     </div>
 
@@ -11,19 +11,12 @@
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Nome</label>
+                    <label class="form-label">Nome da empresa</label>
                     <input class="form-control" name="name" value="{{ old('name', $user->name) }}" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
                     <input class="form-control" type="email" name="email" value="{{ old('email', $user->email) }}" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Role</label>
-                    <select class="form-select" name="role" required>
-                        <option value="admin" @selected($user->role === 'admin')>Admin</option>
-                        <option value="user" @selected($user->role === 'user')>Usuário</option>
-                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Status</label>

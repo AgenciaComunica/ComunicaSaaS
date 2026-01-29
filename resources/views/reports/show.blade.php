@@ -12,10 +12,32 @@
 
     @php
         $query = request()->query();
+        $missingMeta = $batch->parse_stats['meta']['missing'] ?? [];
+        $missingIntel = $batch->parse_stats['intelbras']['missing'] ?? [];
+        $metaLabels = [
+            'spend' => 'Investimento',
+            'impressions' => 'Impressões',
+            'clicks' => 'Cliques',
+            'ctr' => 'CTR',
+            'cpc' => 'CPC',
+            'leads' => 'Leads',
+            'results' => 'Resultados',
+        ];
+        $intelLabels = [
+            'first_message' => '1ª Mensagem (Origem)',
+            'temperature' => 'Temperatura/Tag',
+            'valor_venda' => 'Valor Venda',
+            'name' => 'Nome',
+            'phone' => 'Telefone/WhatsApp',
+            'email' => 'Email',
+        ];
+        $missingMetaText = collect($missingMeta)->map(fn($k) => $metaLabels[$k] ?? $k)->values();
+        $missingIntelText = collect($missingIntel)->map(fn($k) => $intelLabels[$k] ?? $k)->values();
     @endphp
+
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div>
-            <h1 class="h4 mb-1">Relatório {{ $batch->display_label }}</h1>
+            <h1 class="h4 mb-1">Relatório {{ sprintf('%02d-%04d', $batch->month, $batch->year) }}</h1>
             <div class="text-muted">Visão web e exportável em PDF</div>
         </div>
         <div class="d-flex gap-2">
@@ -24,8 +46,19 @@
         </div>
     </div>
 
+
     <div class="card p-3 mb-4">
-        <form class="row g-2 align-items-end" method="GET">
+        <form class="row g-2 align-items-end" method="GET" action="{{ route('reports.show', $batch) }}" id="reportFilterForm">
+            <div class="col-md-4">
+                <label class="form-label">Relatorio</label>
+                <select class="form-select" id="reportSelect">
+                    @foreach($allBatches as $item)
+                        <option value="{{ route('reports.show', $item) }}" @selected($item->id === $batch->id)>
+                            {{ sprintf('%02d-%04d', $item->month, $item->year) }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-md-4">
                 <label class="form-label">Filtro de resultados</label>
                 <select class="form-select" name="origem">
@@ -37,9 +70,37 @@
             <div class="col-md-3">
                 <button class="btn btn-outline-primary" type="submit">Aplicar</button>
             </div>
+
+            @if($missingMetaText->isNotEmpty() || $missingIntelText->isNotEmpty())
+                <div class="small text-muted mt-2">
+                    <strong>Campos não identificados nas planilhas:</strong>
+                    @if($missingMetaText->isNotEmpty())
+                        <div>Meta Ads: {{ $missingMetaText->implode(', ') }}</div>
+                    @endif
+                    @if($missingIntelText->isNotEmpty())
+                        <div>CRM/Vendas: {{ $missingIntelText->implode(', ') }}</div>
+                    @endif
+                    <div>Os KPIs ausentes aparecem como N/A ou 0 no relatório.</div>
+                </div>
+            @endif
         </form>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const select = document.getElementById('reportSelect');
+            if (!select) return;
+            select.addEventListener('change', function () {
+                const url = new URL(select.value, window.location.origin);
+                const params = new URLSearchParams(window.location.search);
+                const origem = params.get('origem');
+                if (origem) {
+                    url.searchParams.set('origem', origem);
+                }
+                window.location.href = url.toString();
+            });
+        });
+    </script>
     <div class="card p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h6 mb-0">Resumo executivo</h2>
@@ -206,7 +267,7 @@
     </div>
 
     <div class="card p-4 mb-4">
-        <h2 class="h6">Comercial (Funil Intelbras - {{ $originLabel }})</h2>
+        <h2 class="h6">Comercial (Funil CRM Vendas - {{ $originLabel }})</h2>
         <div class="table-responsive">
             <table class="table">
                 <thead>

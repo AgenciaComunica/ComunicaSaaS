@@ -29,6 +29,44 @@
     @endphp
 
     <div class="cover">
+
+    @php
+        $missingMeta = $batch->parse_stats['meta']['missing'] ?? [];
+        $missingIntel = $batch->parse_stats['intelbras']['missing'] ?? [];
+        $metaLabels = [
+            'spend' => 'Investimento',
+            'impressions' => 'Impressões',
+            'clicks' => 'Cliques',
+            'ctr' => 'CTR',
+            'cpc' => 'CPC',
+            'leads' => 'Leads',
+            'results' => 'Resultados',
+        ];
+        $intelLabels = [
+            'first_message' => '1ª Mensagem (Origem)',
+            'temperature' => 'Temperatura/Tag',
+            'valor_venda' => 'Valor Venda',
+            'name' => 'Nome',
+            'phone' => 'Telefone/WhatsApp',
+            'email' => 'Email',
+        ];
+        $missingMetaText = collect($missingMeta)->map(fn($k) => $metaLabels[$k] ?? $k)->values();
+        $missingIntelText = collect($missingIntel)->map(fn($k) => $intelLabels[$k] ?? $k)->values();
+    @endphp
+
+    @if($missingMetaText->isNotEmpty() || $missingIntelText->isNotEmpty())
+        <div class="section">
+            <h2>Campos não identificados</h2>
+            @if($missingMetaText->isNotEmpty())
+                <div class="muted">Meta Ads: {{ $missingMetaText->implode(', ') }}</div>
+            @endif
+            @if($missingIntelText->isNotEmpty())
+                <div class="muted">CRM/Vendas: {{ $missingIntelText->implode(', ') }}</div>
+            @endif
+            <div class="muted">Os KPIs ausentes aparecem como N/A ou 0 no relatório.</div>
+        </div>
+    @endif
+
         <h1>Relatório de Tráfego Pago – Comunica SaaS</h1>
         <div class="muted">Período: {{ $batch->display_label }}</div>
     </div>
@@ -115,7 +153,7 @@
     </div>
 
     <div class="section">
-        <h2>Comercial (Funil Intelbras - {{ $originLabel }})</h2>
+        <h2>Comercial (Funil CRM Vendas - {{ $originLabel }})</h2>
         <div class="muted">Distribuição de Temperatura ({{ $originLabel }})</div>
         <img class="img" src="{{ $charts['temperatura_distribuicao'] }}" alt="Distribuição de temperatura (Ads)">
         <table>

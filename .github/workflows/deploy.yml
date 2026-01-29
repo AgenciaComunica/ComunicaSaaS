@@ -41,6 +41,7 @@ jobs:
           port: ${{ secrets.FTP_PORT }}
           server-dir: /ComunicaSaaS/
           protocol: ftp
+          state-name: .ftp-deploy-sync-state-app.json
           exclude: |
             **/.git*
             **/.github/**
@@ -59,6 +60,7 @@ jobs:
           port: ${{ secrets.FTP_PORT }}
           server-dir: /public_html/saas/
           protocol: ftp
+          state-name: .ftp-deploy-sync-state-public.json
           local-dir: public/
           exclude: |
             **/.git*

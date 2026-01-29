@@ -8,24 +8,48 @@ use App\Services\PdfReportGeneratorService;
 use App\Services\RemarketingExporterService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class ReportController extends Controller
 {
-    public function index(): View
+
+    private function scopedBatches()
     {
-        return view('reports.index', [
-            'batches' => UploadBatch::orderByDesc('year')->orderByDesc('month')->get(),
-        ]);
+        $query = UploadBatch::query();
+        $user = request()->user();
+        if ($user && !$user->isAdmin()) {
+            $query->where('created_by', $user->id);
+        }
+        return $query;
+    }
+
+    private function ensureBatchAccess(UploadBatch $batch): void
+    {
+        $user = request()->user();
+        if ($user && !$user->isAdmin() && $batch->created_by !== $user->id) {
+            abort(403);
+        }
+    }
+    public function index(): View|RedirectResponse
+    {
+        $latest = $this->scopedBatches()->orderByDesc('year')->orderByDesc('month')->first();
+        if (!$latest) {
+            return view('reports.empty');
+        }
+
+        return redirect()->route('reports.show', $latest);
     }
 
     public function show(UploadBatch $batch, Request $request, MetricsCalculatorService $metricsService): View
     {
+        $this->ensureBatchAccess($batch);
         $batches = $this->resolveBatches($batch, $request);
         $metrics = $metricsService->calculateForBatches($batches, $request->query('origem', 'TRAFEGO_PAGO'));
 
         return view('reports.show', [
             'batch' => $batch,
             'batches' => $batches,
+            'allBatches' => $this->scopedBatches()->orderByDesc('year')->orderByDesc('month')->get(),
             'metrics' => $metrics,
         ]);
     }
@@ -36,6 +60,7 @@ class ReportController extends Controller
         MetricsCalculatorService $metricsService,
         PdfReportGeneratorService $pdfService
     ) {
+        $this->ensureBatchAccess($batch);
         $batches = $this->resolveBatches($batch, $request);
         $metrics = $metricsService->calculateForBatches($batches, $request->query('origem', 'TRAFEGO_PAGO'));
 
@@ -51,6 +76,7 @@ class ReportController extends Controller
         Request $request,
         RemarketingExporterService $exporter
     ) {
+        $this->ensureBatchAccess($batch);
         return $exporter->export($batch, [
             'origem' => $request->query('origem'),
             'mes' => $request->query('mes'),
@@ -74,7 +100,7 @@ class ReportController extends Controller
             return collect([$batch]);
         }
 
-        return UploadBatch::where('year', $batch->year)
+        return $this->scopedBatches()->where('year', $batch->year)
             ->whereIn('month', $monthList)
             ->orderBy('year')
             ->orderBy('month')

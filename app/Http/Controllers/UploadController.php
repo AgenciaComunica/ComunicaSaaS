@@ -15,10 +15,28 @@ use Carbon\Carbon;
 
 class UploadController extends Controller
 {
+
+    private function scopedBatches()
+    {
+        $query = UploadBatch::query();
+        $user = request()->user();
+        if ($user && !$user->isAdmin()) {
+            $query->where('created_by', $user->id);
+        }
+        return $query;
+    }
+
+    private function ensureBatchAccess(UploadBatch $batch): void
+    {
+        $user = request()->user();
+        if ($user && !$user->isAdmin() && $batch->created_by !== $user->id) {
+            abort(403);
+        }
+    }
     public function index(): View
     {
         return view('uploads.index', [
-            'batches' => UploadBatch::orderByDesc('year')->orderByDesc('month')->get(),
+            'batches' => $this->scopedBatches()->orderByDesc('year')->orderByDesc('month')->get(),
         ]);
     }
 
@@ -34,9 +52,30 @@ class UploadController extends Controller
     ): RedirectResponse {
         $data = $request->validated();
         [$year, $month] = array_map('intval', explode('-', $data['period']));
+        $forceReplace = $request->boolean('force_replace');
+
+        $existing = $this->scopedBatches()
+            ->where('year', $year)
+            ->where('month', $month)
+            ->first();
+
+        if ($existing && !$forceReplace) {
+            return back()
+                ->withInput()
+                ->with('confirm_replace', [
+                    'label' => $existing->display_label,
+                ])
+                ->withErrors(['period' => 'Já existe um relatório para este período.']);
+        }
 
         try {
-            return DB::transaction(function () use ($data, $year, $month, $request, $metaParser, $intelbrasParser) {
+            return DB::transaction(function () use ($data, $year, $month, $request, $metaParser, $intelbrasParser, $existing) {
+                if ($existing) {
+                    $basePathExisting = "uploads/batches/{$existing->id}";
+                    Storage::deleteDirectory($basePathExisting);
+                    $existing->delete();
+                }
+
                 $label = sprintf(
                     'Relatorio Marketing %s %d',
                     Carbon::create($year, $month, 1)->locale('pt_BR')->translatedFormat('F'),
@@ -82,6 +121,7 @@ class UploadController extends Controller
 
     public function destroy(UploadBatch $batch): RedirectResponse
     {
+        $this->ensureBatchAccess($batch);
         $basePath = "uploads/batches/{$batch->id}";
 
         try {

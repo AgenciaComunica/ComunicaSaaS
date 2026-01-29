@@ -18,13 +18,13 @@ class MetaCsvParserService
         $headers = $reader->getHeader();
         $normalized = [];
         foreach ($headers as $header) {
-            $normalized[$header] = ColumnNormalizer::normalize($header);
+            $clean = $this->cleanHeader((string) $header);
+            $normalized[$header] = ColumnNormalizer::normalize($clean);
         }
 
         $map = $this->mapColumns($normalized);
-        if (!$map['spend']) {
-            throw new \RuntimeException('Coluna de investimento/gasto não encontrada no CSV Meta Ads.');
-        }
+
+        $missing = $this->missingColumns($map);
 
         $totals = [
             'spend' => 0.0,
@@ -78,6 +78,7 @@ class MetaCsvParserService
             'clicks' => $totals['clicks'],
             'leads' => $totals['leads'],
             'results' => $totals['results'],
+            'missing' => $missing,
         ];
 
         Log::info('Meta CSV parsed', ['batch_id' => $batch->id, 'stats' => $stats]);
@@ -85,51 +86,87 @@ class MetaCsvParserService
         return $stats;
     }
 
+
+    private function resolveColumn(array $normalizedHeaders, array $synonyms, array $keywords = [], int $minScore = 1): ?string
+    {
+        $found = ColumnNormalizer::findBySynonyms($normalizedHeaders, $synonyms);
+        if ($found) {
+            return $found;
+        }
+
+        if ($keywords) {
+            return ColumnNormalizer::findBestMatch($normalizedHeaders, $keywords, $minScore);
+        }
+
+        return null;
+    }
+
+    private function cleanHeader(string $header): string
+    {
+        return ltrim($header, "\xEF\xBB\xBF");
+    }
+
     private function mapColumns(array $normalizedHeaders): array
     {
         return [
-            'spend' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            'spend' => $this->resolveColumn($normalizedHeaders, [
                 'amount spent',
                 'valor gasto',
                 'valor usado',
+                'valor usado brl',
+                'valor gasto brl',
                 'gasto',
                 'spend',
                 'investimento',
                 'valor investido',
                 'spent',
-            ]),
-            'impressions' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['valor', 'gasto', 'invest', 'spend', 'spent', 'usado'], 1),
+            'impressions' => $this->resolveColumn($normalizedHeaders, [
                 'impressoes',
                 'impressions',
                 'impressao',
-            ]),
-            'clicks' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['impress', 'impressions'], 1),
+            'clicks' => $this->resolveColumn($normalizedHeaders, [
                 'cliques',
                 'cliques no link',
                 'clicks',
                 'clique',
-            ]),
-            'ctr' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['clique', 'click'], 1),
+            'ctr' => $this->resolveColumn($normalizedHeaders, [
                 'ctr',
                 'ctr todos',
                 'taxa de cliques',
                 'click through',
-            ]),
-            'cpc' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['ctr'], 1),
+            'cpc' => $this->resolveColumn($normalizedHeaders, [
                 'cpc',
                 'cpc custo por clique no link',
                 'custo por clique',
-            ]),
-            'leads' => ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+            ], ['cpc', 'custo', 'clique'], 2),
+            'leads' => $this->resolveColumn($normalizedHeaders, [
                 'leads',
                 'lead',
                 'mensagens',
                 'mensagem',
                 'conversas',
                 'conversa',
-            ]),
+                'conversas iniciadas',
+            ], ['lead', 'mensagem', 'conversa'], 1),
             'results' => $this->findResultsColumn($normalizedHeaders),
         ];
+    }
+
+    private function missingColumns(array $map): array
+    {
+        $labels = ['spend', 'impressions', 'clicks', 'ctr', 'cpc', 'leads', 'results'];
+        $missing = [];
+        foreach ($labels as $key) {
+            if (empty($map[$key])) {
+                $missing[] = $key;
+            }
+        }
+
+        return $missing;
     }
 
     private function parseNumber($value): float
@@ -171,10 +208,22 @@ class MetaCsvParserService
             }
         }
 
-        return ColumnNormalizer::findBySynonyms($normalizedHeaders, [
+        $found = ColumnNormalizer::findBySynonyms($normalizedHeaders, [
             'resultados',
             'results',
         ]);
+        if ($found) {
+            return $found;
+        }
+
+        $filtered = [];
+        foreach ($normalizedHeaders as $original => $normalized) {
+            if (!str_contains($normalized, 'tipo de resultado')) {
+                $filtered[$original] = $normalized;
+            }
+        }
+
+        return ColumnNormalizer::findBestMatch($filtered, ['resultado', 'result', 'conversa', 'mensagem'], 1);
     }
 
     private function detectDelimiter(string $path): string

@@ -15,7 +15,7 @@ class UsersController extends Controller
         $this->authorize('viewAny', User::class);
 
         return view('admin.users.index', [
-            'users' => User::orderBy('name')->get(),
+            'users' => User::where('role', 'user')->orderBy('name')->get(),
         ]);
     }
 
@@ -30,7 +30,10 @@ class UsersController extends Controller
     {
         $this->authorize('create', User::class);
 
-        User::create($request->validated());
+        $data = $request->validated();
+        $data['role'] = 'user';
+        $data['status'] = 'active';
+        User::create($data);
 
         return redirect()->route('admin.users.index')->with('success', 'Usuário criado.');
     }
@@ -53,6 +56,22 @@ class UsersController extends Controller
         $user->update($data);
 
         return redirect()->route('admin.users.index')->with('success', 'Usuário atualizado.');
+    }
+
+
+    public function impersonate(User $user): RedirectResponse
+    {
+        $this->authorize('update', $user);
+
+        if ($user->role !== 'user') {
+            return back()->withErrors(['impersonate' => 'Apenas empresas podem ser acessadas.']);
+        }
+
+        request()->session()->put('impersonator_id', auth()->id());
+        auth()->login($user);
+        request()->session()->regenerate();
+
+        return redirect()->route('dashboard');
     }
 
     public function deactivate(User $user): RedirectResponse

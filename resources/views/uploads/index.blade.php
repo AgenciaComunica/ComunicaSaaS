@@ -2,7 +2,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h4 mb-1">Uploads</h1>
-            <div class="text-muted">Batches mensais de Meta Ads + Intelbras</div>
+            <div class="text-muted">Batches mensais de Meta Ads + CRM Vendas</div>
         </div>
         <a href="{{ route('uploads.create') }}" class="btn btn-primary">Gerar relatório</a>
     </div>
@@ -13,7 +13,7 @@
                 <thead>
                     <tr>
                         <th>Período</th>
-                        <th>Arquivos</th>
+                                                <th>Arquivos</th>
                         <th>Processado</th>
                         <th>Stats</th>
                         <th class="text-end">Ações</th>
@@ -23,9 +23,9 @@
                     @foreach($batches as $batch)
                         <tr>
                             <td>{{ $batch->display_label }}</td>
-                            <td>
+                                                        <td>
                                 <div class="small text-muted">Meta: {{ $batch->meta_csv_path ? 'OK' : '—' }}</div>
-                                <div class="small text-muted">Intelbras: {{ $batch->intelbras_xlsx_path ? 'OK' : '—' }}</div>
+                                <div class="small text-muted">CRM Vendas: {{ $batch->intelbras_xlsx_path ? 'OK' : '—' }}</div>
                             </td>
                             <td>{{ $batch->parsed_at ? $batch->parsed_at->format('d/m/Y H:i') : '—' }}</td>
                             <td class="small">
