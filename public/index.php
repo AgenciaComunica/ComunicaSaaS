@@ -16,5 +16,6 @@ if (file_exists($maintenance = $appRoot.'/storage/framework/maintenance.php')) {
 require $appRoot.'/vendor/autoload.php';
 
 // Bootstrap Laravel and handle the request...
-(require_once $appRoot.'/bootstrap/app.php')
-    ->handleRequest(Request::capture());
+$app = require_once $appRoot.'/bootstrap/app.php';
+$app->usePublicPath(__DIR__);
+$app->handleRequest(Request::capture());
