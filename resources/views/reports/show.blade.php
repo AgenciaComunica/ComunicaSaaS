@@ -109,6 +109,13 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <div class="p-3 border rounded bg-white">
+                    <div class="text-muted small">Taxa de conversão</div>
+                    <div class="h4 mb-1">{{ $funnelSelected['taxa_conversao'] ? number_format($funnelSelected['taxa_conversao'] * 100, 2, ',', '.') . '%' : 'N/A' }}</div>
+                    <div class="small text-muted">Vendas / Leads ({{ $originLabel }})</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 border rounded bg-white">
                     <div class="text-muted small">ROI do período</div>
                     <div class="h4 mb-1">
                         {{ is_null($roiSummary['roi']) ? 'N/A' : number_format($roiSummary['roi'] * 100, 1, ',', '.') . '%' }}

@@ -21,6 +21,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/uploads/create', [UploadController::class, 'create'])->name('uploads.create');
     Route::post('/uploads', [UploadController::class, 'store'])->name('uploads.store');
     Route::delete('/uploads/{batch}', [UploadController::class, 'destroy'])->name('uploads.destroy');
+    Route::get('/uploads/{batch}/status', [UploadController::class, 'status'])->name('uploads.status');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{batch}', [ReportController::class, 'show'])->name('reports.show');

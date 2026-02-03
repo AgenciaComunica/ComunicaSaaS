@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UploadBatchRequest;
 use App\Models\UploadBatch;
-use App\Services\IntelbrasXlsxParserService;
-use App\Services\MetaCsvParserService;
+use App\Jobs\ProcessUploadBatch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -46,9 +45,7 @@ class UploadController extends Controller
     }
 
     public function store(
-        UploadBatchRequest $request,
-        MetaCsvParserService $metaParser,
-        IntelbrasXlsxParserService $intelbrasParser
+        UploadBatchRequest $request
     ): RedirectResponse {
         $data = $request->validated();
         [$year, $month] = array_map('intval', explode('-', $data['period']));
@@ -69,7 +66,7 @@ class UploadController extends Controller
         }
 
         try {
-            return DB::transaction(function () use ($data, $year, $month, $request, $metaParser, $intelbrasParser, $existing) {
+            return DB::transaction(function () use ($data, $year, $month, $request, $existing) {
                 if ($existing) {
                     $basePathExisting = "uploads/batches/{$existing->id}";
                     Storage::deleteDirectory($basePathExisting);
@@ -95,20 +92,13 @@ class UploadController extends Controller
                 $batch->update([
                     'meta_csv_path' => $metaPath,
                     'intelbras_xlsx_path' => $intelbrasPath,
+                    'status' => 'pending',
+                    'progress' => 0,
                 ]);
 
-                $metaStats = $metaParser->parse(Storage::path($metaPath), $batch);
-                $intelbrasStats = $intelbrasParser->parse(Storage::path($intelbrasPath), $batch);
+                ProcessUploadBatch::dispatch($batch->id);
 
-                $batch->update([
-                    'parse_stats' => [
-                        'meta' => $metaStats,
-                        'intelbras' => $intelbrasStats,
-                    ],
-                    'parsed_at' => now(),
-                ]);
-
-                return redirect()->route('uploads.index')->with('success', 'Upload processado com sucesso.');
+                return redirect()->route('uploads.index')->with('success', 'Upload recebido. Processando em segundo plano.');
             });
         } catch (\Throwable $e) {
             Log::error('Erro ao processar batch', [
@@ -117,6 +107,18 @@ class UploadController extends Controller
 
             return back()->withErrors(['upload' => $e->getMessage()])->withInput();
         }
+    }
+
+
+    public function status(UploadBatch $batch)
+    {
+        $this->ensureBatchAccess($batch);
+
+        return response()->json([
+            'status' => $batch->status ?? 'pending',
+            'progress' => $batch->progress ?? 0,
+            'error' => $batch->error_message,
+        ]);
     }
 
     public function destroy(UploadBatch $batch): RedirectResponse

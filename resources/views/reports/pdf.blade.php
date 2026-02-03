@@ -75,6 +75,11 @@
         <h2>Resumo executivo</h2>
         <div class="grid">
             <div class="col card">
+                <strong>Taxa de conversão ({{ $originLabel }})</strong>
+                <div>{{ $funnelSelected['taxa_conversao'] ? number_format($funnelSelected['taxa_conversao'] * 100, 2, ',', '.') . '%' : 'N/A' }}</div>
+                <div class="muted">Vendas / Leads</div>
+            </div>
+            <div class="col card">
                 <strong>ROI ({{ $originLabel }})</strong>
                 <div>{{ is_null($roiSummary['roi']) ? 'N/A' : number_format($roiSummary['roi'] * 100, 1, ',', '.') . '%' }}</div>
                 <div class="muted">
