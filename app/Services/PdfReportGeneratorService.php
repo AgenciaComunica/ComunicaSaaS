@@ -7,7 +7,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PdfReportGeneratorService
 {
-    public function generate(UploadBatch $batch, array $metrics, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function generate(UploadBatch $batch, array $metrics, string $filename)
     {
         $charts = $this->buildCharts($metrics);
 
