@@ -104,14 +104,13 @@
     <div class="card p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h6 mb-0">Resumo executivo</h2>
-            <span class="badge bg-light text-dark">ROI/ROAS ({{ $originLabel }})</span>
+            <span class="badge bg-light text-dark">ROI ({{ $originLabel }})</span>
         </div>
         <div class="row g-3">
             <div class="col-md-6">
                 <div class="p-3 border rounded bg-white">
                     <div class="text-muted small">Taxa de conversão</div>
                     <div class="h4 mb-1">{{ $funnelSelected['taxa_conversao'] ? number_format($funnelSelected['taxa_conversao'] * 100, 2, ',', '.') . '%' : 'N/A' }}</div>
-                    <div class="small text-muted">Vendas / Leads ({{ $originLabel }})</div>
                 </div>
             </div>
             <div class="col-md-6">
@@ -120,56 +119,10 @@
                     <div class="h4 mb-1">
                         {{ is_null($roiSummary['roi']) ? 'N/A' : number_format($roiSummary['roi'] * 100, 1, ',', '.') . '%' }}
                     </div>
-                    <div class="small text-muted">
-                        @if($roiSummary['previous_month'])
-                            vs {{ $roiSummary['previous_month'] }}:
-                            @if(!is_null($roiSummary['roi_delta']))
-                                @php
-                                    $roiDeltaClass = $roiSummary['roi_delta'] > 0 ? 'text-success' : ($roiSummary['roi_delta'] < 0 ? 'text-danger' : 'text-warning');
-                                    $roiDeltaIcon = $roiSummary['roi_delta'] > 0 ? '↑' : ($roiSummary['roi_delta'] < 0 ? '↓' : '→');
-                                @endphp
-                                <span class="{{ $roiDeltaClass }}">
-                                    {{ $roiDeltaIcon }}
-                                    {{ number_format($roiSummary['roi_delta'] * 100, 1, ',', '.') }}%
-                                </span>
-                            @else
-                                N/A
-                            @endif
-                        @else
-                            sem mês anterior
-                        @endif
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="p-3 border rounded bg-white">
-                    <div class="text-muted small">ROAS do período</div>
-                    <div class="h4 mb-1">
-                        {{ is_null($roiSummary['roas']) ? 'N/A' : number_format($roiSummary['roas'], 2, ',', '.') }}
-                    </div>
-                    <div class="small text-muted">
-                        @if($roiSummary['previous_month'])
-                            vs {{ $roiSummary['previous_month'] }}:
-                            @if(!is_null($roiSummary['roas_delta']))
-                                @php
-                                    $roasDeltaClass = $roiSummary['roas_delta'] > 0 ? 'text-success' : ($roiSummary['roas_delta'] < 0 ? 'text-danger' : 'text-warning');
-                                    $roasDeltaIcon = $roiSummary['roas_delta'] > 0 ? '↑' : ($roiSummary['roas_delta'] < 0 ? '↓' : '→');
-                                @endphp
-                                <span class="{{ $roasDeltaClass }}">
-                                    {{ $roasDeltaIcon }}
-                                    {{ number_format($roiSummary['roas_delta'] * 100, 1, ',', '.') }}%
-                                </span>
-                            @else
-                                N/A
-                            @endif
-                        @else
-                            sem mês anterior
-                        @endif
-                    </div>
                 </div>
             </div>
         </div>
-        <div class="text-muted small mt-2">ROI = (Receita - Investimento) / Investimento. ROAS = Receita / Investimento.</div>
+        <div class="text-muted small mt-2">ROI = (Receita - Investimento) / Investimento.</div>
     </div>
 
     <div class="row g-3 mb-4">
@@ -325,9 +278,9 @@
 
     <div class="card p-4 mb-4">
         <h2 class="h6">ROI / ROAS ({{ $originLabel }})</h2>
-        <p class="text-muted mb-2">ROI = (Receita - Investimento) / Investimento. ROAS = Receita / Investimento.</p>
+        <p class="text-muted mb-2">ROI = (Receita - Investimento) / Investimento.</p>
         @if($originFilter === 'ORGANICO')
-            <p class="text-muted">ROI/ROAS não aplicável para Orgânico (investimento zero).</p>
+            <p class="text-muted">ROI não aplicável para Orgânico (investimento zero).</p>
         @else
             <div class="table-responsive">
                 <table class="table">
