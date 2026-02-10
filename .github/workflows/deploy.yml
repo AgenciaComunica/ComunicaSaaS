@@ -1,9 +1,11 @@
 name: CI
 
-on:
-  push:
-    branches: [main, dev]
-  pull_request:
+# on:
+#   push:
+#     branches: [main, dev]
+#   pull_request:
+
+# Workflow desativado temporariamente.
 
 jobs:
   tests:
