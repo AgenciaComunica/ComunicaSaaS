@@ -1,1 +1,0 @@
-<!-- Companies panel disabled in this version -->
